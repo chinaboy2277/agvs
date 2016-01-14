@@ -1,0 +1,48 @@
+<launch>
+  <master auto="start"/>
+
+  <!-- Map server -->
+  <!--node name="map_server" pkg="map_server" type="map_server" args="$(find agvs_teb_planner)/maps/rst_lab.yaml" /-->
+  <node name="map_server" pkg="map_server" type="map_server" args="$(find agvs_teb_planner)/maps/map_willow_garage.yaml" />
+  <!--node name="map_server" pkg="map_server" type="map_server" args="$(find agvs_complete)/maps/willow.yaml" /-->
+
+  <!-- first without amcl -->
+  <!--node pkg="tf" type="static_transform_publisher" name="map_to_odom" args="0.0 -5.5 0.0 0.0 0.0 0.0 /map /odom 200" /-->
+  <!--node pkg="tf" type="static_transform_publisher" name="map_to_odom" args="-4.0 4.0 0.0 0.0 0.0 0.0 /map /odom 200" /-->
+  <!--node pkg="tf" type="static_transform_publisher" name="map_to_odom" args="0.0 0.0 0.0 0.0 0.0 0.0 /map /odom 200" /-->
+
+  <!-- amcl -->
+ <param name="amcl/initial_pose_x" value="-4.0"/>
+ <param name="amcl/initial_pose_y" value="4.0"/>
+ <param name="amcl/initial_pose_a" value="0.0"/>
+ <include file="$(find agvs_complete)/launch/amcl_diff_2.launch" />
+
+
+  <node pkg="move_base" type="move_base" respawn="false" name="move_base" output="screen">
+    <rosparam file="$(find agvs_teb_planner)/cfg/costmap_common_params.yaml" command="load" ns="global_costmap" />
+    <rosparam file="$(find agvs_teb_planner)/cfg/costmap_common_params.yaml" command="load" ns="local_costmap" />
+    <rosparam file="$(find agvs_teb_planner)/cfg/local_costmap_params.yaml" command="load" />
+    <rosparam file="$(find agvs_teb_planner)/cfg/global_costmap_params.yaml" command="load" />
+    <rosparam file="$(find agvs_teb_planner)/cfg/costmap_converter_params.yaml" command="load" />
+    <rosparam file="$(find agvs_teb_planner)/cfg/teb_local_planner_params.yaml" command="load" />
+    <rosparam file="$(find agvs_teb_planner)/cfg/global_planner_params.yaml" command="load" />
+
+    <param name="base_local_planner" value="teb_local_planner/TebLocalPlannerROS" />
+    <param name="base_global_planner" value="global_planner/GlobalPlanner" />
+    <param name="controller_frequency" value="5.0" />
+    <param name="planner_frequency" value="1.0" />
+
+    <remap from="/odom" to="/agvs_robot_control/odom"/>
+  </node>
+
+  <!-- Conversion node from twist to ackermann_drive -->
+  <node pkg="teb_local_planner" type="cmd_vel_to_ackermann_drive.py" name="cmd_vel_to_ackermann_drive" output="screen">
+     <param name="ackermann_cmd_topic" value="/agvs_robot_control/command" />
+     <param name="wheelbase" value="0.958" />
+     <param name="frame_id" value="odom" />
+  </node>
+
+  <!-- Start rviz -->
+  <node pkg="rviz" type="rviz" name="rviz" args="-d $(find agvs_teb_planner)/cfg/nav_rviz.rviz" />
+
+</launch>
